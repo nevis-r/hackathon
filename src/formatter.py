@@ -55,7 +55,13 @@ class AwardWriter:
 
         print(response)
 
-        return response
+        # Check if the response contains text before returning
+        if response.text:
+            return response.text
+        else:
+            # Handle case where AI returns an empty response
+            print("[ERROR] AI returned no text content.")
+            sys.exit(1)
 
     # NOT IMPLEMENTED
     def check_length(self, accomplishments):
