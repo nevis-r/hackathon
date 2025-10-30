@@ -2,7 +2,6 @@ import pikepdf
 from lxml import etree
 from flask import Flask, render_template, request, send_file
 from google import genai
-from dotenv import load_dotenv
 import os
 import sys
 import tempfile
@@ -18,8 +17,8 @@ class AwardWriter:
 
     # Using a relative path for the template; make sure 'official.pdf' is in the same directory.
     def __init__(self, template_path="official.pdf"):
-        self.template_path = template_path
-        load_dotenv()
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.template_path = os.path.join(base_dir, template_path)
         self.MODEL = os.environ.get("MODEL", "gemini-2.5-flash")
         self.API_KEY = os.environ.get("API_KEY")
         if not self.API_KEY:
@@ -196,13 +195,3 @@ def generate_award():
     except Exception as e:
         # Catch other errors
         return f"An unexpected error occurred: {e}", 500
-
-if __name__ == '__main__':
-    # Ensure 'official.pdf' is present and API_KEY is set in a .env file
-    if not os.path.exists("official.pdf"):
-         print("\n*** ERROR: 'official.pdf' template not found in the current directory. ***")
-         print("Please place your DAF1206 template file here.")
-         sys.exit(1)
-         
-    # Run the Flask app
-    app.run(debug=True)
