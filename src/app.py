@@ -5,67 +5,121 @@ from google import genai
 import os
 import sys
 import tempfile
-
+import time # Used for the exponential backoff retry logic
 
 from system_prompts import SYSTEM_PROMPT_1 
 
+# --- MODULE LEVEL CONFIGURATION (Reads variables directly from Vercel env) ---
+# Vercel injects environment variables directly into os.environ
+API_KEY = os.environ.get("API_KEY")
+MODEL = os.environ.get("MODEL", "gemini-2.5-flash")
+
+# -----------------------------------------------------------------------------
 
 app = Flask(__name__)
 
 class AwardWriter:
     """Writes awards in the DAF 1206 format."""
 
-    # Using a relative path for the template; make sure 'official.pdf' is in the same directory.
     def __init__(self, template_path="official.pdf"):
+        
+        # --- FIX 1: Robust Path Resolution ---
+        # Get the absolute path of the directory where app.py resides.
+        # This fixes the "official.pdf not found" error in serverless environments.
         base_dir = os.path.dirname(os.path.abspath(__file__))
         self.template_path = os.path.join(base_dir, template_path)
-        self.MODEL = os.environ.get("MODEL", "gemini-2.5-flash")
-        self.API_KEY = os.environ.get("API_KEY")
-        if not self.API_KEY:
-            raise ValueError("API_KEY not found in environment variables.")
-        self.client = genai.Client(api_key=self.API_KEY)
+        # ------------------------------------
+
+        self.MODEL = MODEL
+        
+        # --- FIX 2: Graceful Client Initialization (Prevents 500 Crash) ---
+        # Only instantiate the client if the key is present. Do NOT raise an error here.
+        if API_KEY:
+            self.client = genai.Client(api_key=API_KEY)
+        else:
+            self.client = None
+            # Print error to logs, but allow function to start (avoids 500)
+            print("FATAL ERROR: API_KEY not set. AI functions will return error message.")
+        # --------------------------------------------
 
     def query_api(self, user_prompt):
         """Query Gemini for text to put into the accomplishments section of the DAF1206 form"""
-    
-        full_prompt = f"{SYSTEM_PROMPT_1}\n\n{user_prompt}"
+        
+        # --- Handle Missing Key Gracefully ---
+        if not self.client:
+            print("[ERROR] API Client not initialized due to missing API_KEY.")
+            return "Error: API_KEY is missing. Please configure Vercel environment variables."
+        # -------------------------------------
 
-        try:
-            response = self.client.models.generate_content(
-                model=self.MODEL,
-                contents=full_prompt,
-            )
-            
-            if response.text:
-                return response.text
-            else:
-                # Handle case where AI returns an empty response
-                print("[ERROR] AI returned no text content.")
-                return "Error: AI returned no accomplishment text."
-        except Exception as e:
-            print(f"[ERROR] AI API call failed: {e}")
-            return f"Error querying AI: {e}"
+        full_prompt = f"{SYSTEM_PROMPT_1}\n\n{user_prompt}"
+        max_retries = 5
+        base_delay = 1 # seconds
+
+        for attempt in range(max_retries):
+            try:
+                response = self.client.models.generate_content(
+                    model=self.MODEL,
+                    contents=full_prompt,
+                )
+                
+                if response.text:
+                    return response.text
+                else:
+                    print(f"[WARNING] Attempt {attempt+1}: AI returned no text content.")
+                    if attempt == max_retries - 1:
+                        return "Error: AI returned no accomplishment text after multiple retries."
+
+            except Exception as e:
+                error_message = str(e)
+                # Check for 503 UNAVAILABLE or other transient errors
+                if attempt < max_retries - 1 and ("503 UNAVAILABLE" in error_message or "Internal Server Error" in error_message):
+                    delay = base_delay * (2 ** attempt)
+                    print(f"[WARNING] Attempt {attempt+1} failed ({e}). Retrying in {delay:.2f}s...")
+                    time.sleep(delay)
+                else:
+                    print(f"[ERROR] AI API call failed definitively: {e}")
+                    return f"Error querying AI: {e}"
+
+        # Should be unreachable due to return statements in the loop
+        return "Error: Failed to query AI after maximum retries."
 
     def check_length(self, accomplishments):
-        """Splits the accomplishments text into two paragraphs, prioritizing a user-defined 'BREAK' tag."""
+        """Checks for the 'BREAK' keyword and splits the accomplishments text into two paragraphs."""
         
-        break_tag = "BREAK"
-        if break_tag in accomplishments:
-            # Split the text exactly once based on the user-defined break
-            parts = accomplishments.split(break_tag, 1)
+        break_keyword = "BREAK"
+        
+        # 1. Check for explicit "BREAK" keyword
+        if break_keyword in accomplishments:
+            parts = accomplishments.split(break_keyword, 1)
+            # Ensure both parts are clean and not empty
             accomplishments_1 = parts[0].strip()
             accomplishments_2 = parts[1].strip()
             
-            # Ensure both parts are non-empty after stripping
+            # If the split was successful and yielded content, use it
             if accomplishments_1 and accomplishments_2:
-                print("[DEBUG] Split using 'BREAK' tag.")
                 return accomplishments_1, accomplishments_2
-            
+
+        # 2. Fallback to automated midpoint splitting
+        mid_point = len(accomplishments) // 2
+        split_index = accomplishments.rfind('.', 0, mid_point)
+
+        if split_index != -1 and split_index > 100:
+            accomplishments_1 = accomplishments[:split_index + 1].strip()
+            accomplishments_2 = accomplishments[split_index + 1:].strip()
+        else:
+            # If no suitable sentence break is found, just split in the middle
+            accomplishments_1 = accomplishments[:mid_point].strip()
+            accomplishments_2 = accomplishments[mid_point:].strip()
+
         return accomplishments_1, accomplishments_2
 
     def format_1206(self, award, category, period, nom_rank, nom_first_name, nom_middle_initial, nom_last_name, agency, duty_title, nom_telephone, address, com_rank, com_first_name, com_middle_initial, com_last_name, com_telephone, accomplishments_1, accomplishments_2, output_path):
         """Create a DAF 1206 PDF from the template, saving it to output_path."""
         
+        # Ensure the template file exists before attempting to open
+        if not os.path.exists(self.template_path):
+             raise ValueError(f"PDF template file not found at: {self.template_path}")
+
         # Open the template PDF
         with pikepdf.open(self.template_path) as pdf:
 
@@ -92,7 +146,7 @@ class AwardWriter:
             # To parse and modify the XML
             root = etree.fromstring(datasets_xml.encode("utf-8"))
             
-            # Map form data to XFA fields
+            # --- Map form data to XFA fields ---
             data_map = {
                 "award": award,
                 "category": category,
@@ -130,7 +184,7 @@ class AwardWriter:
             return output_path
 
 
-# Flask Routes
+# --- Flask Routes ---
 
 @app.route('/')
 def index():
@@ -155,7 +209,6 @@ def generate_award():
         accomplishments_1, accomplishments_2 = writer.check_length(accomplishments)
 
         # 4. Generate the PDF and save it to a temporary file
-        # Use a temporary file path to store the PDF securely before sending
         temp_dir = tempfile.gettempdir()
         temp_file_path = os.path.join(temp_dir, f"DAF1206_{form_data.get('nom_last_name', 'Award')}.pdf")
 
@@ -190,7 +243,7 @@ def generate_award():
         )
 
     except ValueError as e:
-        # Handle configuration or file-not-found errors
+        # Handle configuration or file-not-found errors (like the PDF template being missing)
         return f"Configuration Error: {e}", 500
     except Exception as e:
         # Catch other errors
