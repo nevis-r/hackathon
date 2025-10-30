@@ -3,7 +3,15 @@
     "builds": [
         {
             "src": "src/app.py",
-            "use": "@vercel/python"
+            "use": "@vercel/python",
+            "config": {
+                "includeFiles": [
+                    "src/official.pdf",
+                    "src/system_prompts.py",
+                    "src/templates/index.html",
+                    "src/__init__.py" 
+                ]
+            }
         }
     ],
     "routes": [
