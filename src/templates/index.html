@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DAF 1206 Award Generator</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .header-bg {
+            background-color: #1f2937; /* Dark Gray */
+        }
+        .form-section {
+            border-left: 4px solid #3b82f6; /* Blue border */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
+        <header class="header-bg p-6 rounded-t-xl shadow-lg">
+            <h1 class="text-3xl font-bold text-white text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 inline-block mr-2 align-middle" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                DAF 1206 Award Narrative Builder
+            </h1>
+            <p class="text-gray-300 text-center mt-2">Generate the official narrative and populate the PDF form.</p>
+        </header>
+
+        <main class="bg-white p-6 rounded-b-xl shadow-lg">
+            <form method="POST" action="/generate">
+
+                <!-- AI Prompt Section -->
+                <section class="mb-8 p-4 form-section">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-3">1. AI Narrative Prompt</h2>
+                    <p class="text-sm text-gray-500 mb-4">Provide clear, quantifiable bullet points or a detailed summary of the accomplishments to generate a polished, narrative-style write-up.</p>
+                    <textarea id="ai_prompt" name="ai_prompt" rows="5" 
+                        class="shadow-sm rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full" 
+                        required placeholder="E.g., Led 5-person team to complete $500K server migration, saving 1,200 man-hours. Revamped training program for 40 new Airmen, reducing certification time by 3 weeks."></textarea>
+                </section>
+
+                <!-- Nomination Details -->
+                <section class="mb-8 p-4 form-section">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-3">2. Nomination Details (Blocks 1-8)</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-4">
+                            <input type="text" id="award" name="award" placeholder="Award Title (e.g., Airman of the Quarter)" 
+                                class="shadow-sm rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full" value="Airman of the Quarter" required>
+                            <input type="text" id="category" name="category" placeholder="Category (e.g., SNCO, CGO)" 
+                                class="shadow-sm rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full" value="Airman" required>
+                            <input type="text" id="period" name="period" placeholder="Award Period (e.g., 01 Jan 24 - 31 Mar 24)" 
+                                class="shadow-sm rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full" value="01 Jan 24 - 31 Mar 24" required>
+                            <input type="text" id="agency" name="agency" placeholder="MAJCOM/FLDCOM/DOA/DRU" 
+                                class="shadow-sm rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full" value="AETC" required>
+                        </div>
+                        <div class="space-y-4">
+                            <input type="text" id="duty_title" name="duty_title" placeholder="DAFSC/Duty Title (e.g., 2A6X1 / Aerospace Prop Shop)" 
+                                class="shadow-sm rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full" value="2A6X1 / Aerospace Prop Shop" required>
+                            <input type="text" id="address" name="address" placeholder="Unit Address (e.g., 80 FSS/CC, Lackland AFB TX 78236)" 
+                                class="shadow-sm rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full" value="80 FSS/CC, Lackland AFB TX 78236" required>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Nominee Info -->
+                <section class="mb-8 p-4 form-section">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-3">3. Nominee Information</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <input type="text" id="nom_rank" name="nom_rank" placeholder="Rank (e.g., A1C)" 
+                            class="shadow-sm rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full" value="A1C" required>
+                        <input type="text" id="nom_first_name" name="nom_first_name" placeholder="First Name" 
+                            class="shadow-sm rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full" value="Jane" required>
+                        <input type="text" id="nom_middle_initial" name="nom_middle_initial" placeholder="M.I." maxlength="1" 
+                            class="shadow-sm rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full" value="D">
+                        <input type="text" id="nom_last_name" name="nom_last_name" placeholder="Last Name" 
+                            class="shadow-sm rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full" value="Doe" required>
+                    </div>
+                    <div class="mt-4">
+                         <input type="text" id="nom_telephone" name="nom_telephone" placeholder="Nominee Telephone (DSN & Commercial)" 
+                             class="shadow-sm rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full" value="555-123-4567" required>
+                    </div>
+                </section>
+
+                <!-- Commander/Supv. Info -->
+                <section class="mb-8 p-4 form-section">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-3">4. Commander/Supervisor Information (Block 9)</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <input type="text" id="com_rank" name="com_rank" placeholder="Rank (e.g., Col)" 
+                            class="shadow-sm rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full" value="Col" required>
+                        <input type="text" id="com_first_name" name="com_first_name" placeholder="First Name" 
+                            class="shadow-sm rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full" value="Robert" required>
+                        <input type="text" id="com_middle_initial" name="com_middle_initial" placeholder="M.I." maxlength="1" 
+                            class="shadow-sm rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full" value="J">
+                        <input type="text" id="com_last_name" name="com_last_name" placeholder="Last Name" 
+                            class="shadow-sm rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full" value="Smith" required>
+                    </div>
+                    <div class="mt-4">
+                         <input type="text" id="com_telephone" name="com_telephone" placeholder="Commander Telephone (DSN & Commercial)" 
+                             class="shadow-sm rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full" value="555-987-6543" required>
+                    </div>
+                </section>
+
+                <button type="submit" 
+                    class="w-full py-3 px-6 bg-blue-700 text-white font-semibold rounded-lg shadow-lg hover:bg-blue-600 transition duration-150 ease-in-out">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Generate and Download DAF 1206 PDF
+                </button>
+            </form>
+        </main>
+    </div>
+</body>
+</html>

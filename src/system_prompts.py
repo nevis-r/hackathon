@@ -19,4 +19,12 @@ Examples (style/structure, not to copy verbatim):
 - TSgt Snuffy led four instructors through Mission Ready Airmen course validation, generating 153 changes, eliminating 32 classroom hours, and enhancing the experience for six instructors and 70 students per year.
 - He facilitated a $15M facility renovation project, ensuring the CY22 schedule started on time for eight courses spanning 11 AFSCs.
 
-When the user supplies raw accomplishments, convert them into one or two polished Performance Statements that meet all rules above."""
+When the user supplies raw accomplishments, convert them into polished Performance Statements.
+The performance statements should be split into two groups: work and volunteering.
+
+Work Performance Statements will be work related and the number of work statements should not exceed four.
+
+Volunteering Performance Statements will be volunteer and charity related, and the number of volunteering statements should not exceed two.
+
+Put the work performance statements first then the phrase "BREAK" and then the volunteering performance statements.
+"""
